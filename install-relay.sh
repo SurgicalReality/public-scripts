@@ -29,6 +29,10 @@
 
 set -Eeuo pipefail
 
+# sudo on RHEL resets PATH to /sbin:/bin:/usr/sbin:/usr/bin; the node symlink
+# below lives in /usr/local/bin, and stage 2 inherits this PATH.
+export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+
 RELAY_REPO="${RELAY_REPO:-SurgicalReality/relay}"
 RELAY_VERSION="${RELAY_VERSION:-latest}"
 PAYLOAD_ASSET="relay-rhel-linux-x64.tar.gz"
@@ -156,6 +160,19 @@ install_prerequisites() {
     hash -r
   fi
 
+  # A nodejs24 built for a newer RHEL 10 minor can fail to link against an
+  # older libuv ("undefined symbol: uv_tcp_keepalive_ex"). Update the shared
+  # libraries; if node still doesn't run, fall back to the default nodejs.
+  if command -v node >/dev/null && ! node -v >/dev/null 2>&1 && [[ "$node_pkg" == nodejs24 ]]; then
+    warn "Node.js 24 doesn't run on this host (outdated system libraries?); updating libuv and its dependencies."
+    dnf -y upgrade libuv "nodejs24*" >/dev/null 2>&1 || true
+    if ! node -v >/dev/null 2>&1; then
+      warn "Still failing: $(node -v 2>&1 | head -1). Falling back to the default 'nodejs' package; run 'dnf upgrade' and re-run this script to get Node.js 24."
+      rm -f /usr/local/bin/node
+      dnf -y install nodejs >/dev/null
+      hash -r
+    fi
+  fi
   command -v node >/dev/null || die "node is not available after installing $node_pkg."
   local node_major; node_major="$(node -p 'process.versions.node.split(".")[0]')"
   (( node_major >= MIN_NODE_MAJOR )) \

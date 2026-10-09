@@ -8,7 +8,7 @@ Use a fresh RHEL 10.x x86_64 VM, registered with `subscription-manager` (the ins
 
 ```shell
 # public repository / releases
-curl -fsSLO https://github.com/SurgicalReality/relay/releases/latest/download/install-relay.sh
+curl -fsSLO https://raw.githubusercontent.com/SurgicalReality/public-scripts/refs/heads/main/install-relay.sh
 sudo GITHUB_TOKEN="$(gh auth token)" RELAY_VERSION=<tag> bash install-relay.sh
 ```
 
